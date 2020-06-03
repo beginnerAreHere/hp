@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.memory.MemoryOperateMapper">
+    <!-- <typeAlias type="com.example.entity.memory.SystemMemoryDBEntity" alias="smdb"/> -->
+    <!-- 新增监控系统内存信息情况 -->
+	<insert  id="memoryAdd" parameterType="com.example.entity.memory.SystemMemoryDBEntity">
+		insert into
+        SYSTEM_MEMORY(
+        ID,
+        SYSTEM_ID,
+        JVM_USED_MEMORY,
+        JVM_FREE_MEMORY,
+        JVM_TOTAL_MEMORY,
+        JVM_MAX_MEMORY,
+        PHYSICAL_FREE_MEMORY,
+        PHYSICAL_USED_MEMORY,
+        PHYSICAL_TOTAL_MEMORY,
+        TOTAL_THREAD,
+        DB_TIME,
+        GAIN_TIME)
+        VALUES
+        (#{smdb.id},
+         #{smdb.systemId},
+         #{smdb.JVMUsedMemory},
+         #{smdb.JVMFreeMemory},
+         #{smdb.JVMTotalMemory},
+         #{smdb.JVMMaxMemory},
+         #{smdb.physicalUsedMemory},
+         #{smdb.physicalFreeMemory},
+         #{smdb.physicalTotalMemory},
+         #{smdb.totalThread},
+         #{smdb.dbTime},
+         #{smdb.gainTime}
+        )
+	</insert >
+	<!-- 获取监控系统内存信息情况 -->
+	<select id="memoryAllGet" parameterType="java.util.List" resultType="com.example.entity.memory.SystemMemoryDBEntity">
+	  SELECT 
+	    ID AS 'id',
+        SYSTEM_ID AS 'systemId',
+        JVM_USED_MEMORY AS 'jvmusedMemory',
+        JVM_FREE_MEMORY AS 'jvmfreeMemory',
+        JVM_TOTAL_MEMORY AS 'jvmtotalMemory',
+        JVM_MAX_MEMORY AS 'jvmmaxMemory',
+        PHYSICAL_TOTAL_MEMORY AS 'physicalTotalMemory',
+        PHYSICAL_USED_MEMORY AS 'physicalUsedMemory',
+        PHYSICAL_FREE_MEMORY AS 'physicalFreeMemory',
+        TOTAL_THREAD AS 'totalThread',
+        DB_TIME AS 'dbtime',
+        GAIN_TIME AS 'gainTime'
+        FROM SYSTEM_MEMORY WHERE SYSTEM_ID IN
+	   <foreach item="item" index="index" collection="systemIds" open="(" separator="," close=")">
+         #{item}
+       </foreach>
+	</select>
+	
+	<!-- 获取监控系统内存信息情况 -->
+	<select id="memoryGet" parameterType="java.lang.String" resultType="com.example.entity.memory.SystemMemoryDBEntity">
+	  SELECT 
+	    ID AS 'id',
+        SYSTEM_ID AS 'systemId',
+        JVM_USED_MEMORY AS 'jvmusedMemory',
+        JVM_FREE_MEMORY AS 'jvmfreeMemory',
+        JVM_TOTAL_MEMORY AS 'jvmtotalMemory',
+        JVM_MAX_MEMORY AS 'jvmmaxMemory',
+        PHYSICAL_TOTAL_MEMORY AS 'physicalTotalMemory',
+        PHYSICAL_USED_MEMORY AS 'physicalUsedMemory',
+        PHYSICAL_FREE_MEMORY AS 'physicalFreeMemory',
+        TOTAL_THREAD AS 'totalThread',
+        DB_TIME AS 'dbtime',
+        GAIN_TIME AS 'gainTime'
+        FROM SYSTEM_MEMORY WHERE SYSTEM_ID=#{systemId} 
+        AND GAIN_TIME &gt;= STR_TO_DATE(#{startTime},'%Y-%m-%d %H:%i:%s')
+        <if test="endTime != null and endTime !=''">
+            AND  GAIN_TIME &lt;= STR_TO_DATE(#{endTime},'%Y-%m-%d %H:%i:%s')
+        </if>
+        ORDER BY GAIN_TIME
+	</select>
+</mapper>

@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport"
+	content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>控制中心</title>
+<link rel="stylesheet" href="/ui/layui/css/layui.css">
+<script type="text/javascript" src="/jq/jquery-3.5.1.min.js"></script>
+</head>
+<body>
+	<div class="layui-container" style="margin: 50px auto">
+		<div class="layui-row layui-col-space10">
+			<div class="layui-col-md6">
+				<form class="layui-form" action="">
+					<div class="layui-form-item">
+						<div class="layui-inline">
+							<label class="layui-form-label">系统编码</label>
+							<div class="layui-input-inline">
+								<select id="systemId"name="systemId" lay-filter="systemId">
+								</select>
+							</div>
+						</div>
+					</div>
+				</form>
+			</div>
+			<div class="layui-col-md6">
+				<div id="one" style="width: 550px; height: 250px"></div>
+			</div>
+			<div class="layui-col-md6">
+				<div id="two" style="width: 550px; height: 250px"></div>
+			</div>
+
+			<div class="layui-col-md6">
+				<div id="three" style="width: 550px; height: 250px"></div>
+			</div>
+		</div>
+	</div>
+</body>
+<script src="/ui/layui/layui.js"></script>
+<script src="/ui/echarts/echarts.min.js"></script>
+<script src="/ui/echarts/theme/macarons.js"></script>
+<script type="text/javascript">
+	var xAxisData = new Array();
+	var c0series1 = new Array();
+	var c0series2 = new Array();
+	var c0series3 = new Array();
+	var c0series4 = new Array();
+	var c1series1 = new Array();
+	var c1series2 = new Array();
+	var c1series3 = new Array();
+	var c2series1 = new Array();
+	$(function() {
+		layui.use('element', function() {
+			var element = layui.element;
+		});
+		layui.use('layer', function() {
+			var layer = layui.layer;
+		});
+		layui.use('form', function() {
+			var form=layui.form;
+			 //监听select选中事件
+		    form.on('select(systemId)', function(data){
+		    	myrefresh();
+	        }); 
+		});	
+		//加载系统信息
+		$.ajax({
+			type : "post",
+			url : "/system/get",
+			data : {
+				systemId :'',
+			},
+			dataType : "json", 
+			success : function(msg) {
+				//console.log(msg);
+				if(msg.code!=0){
+					layer.alert(msg.messges);
+					return;
+				}
+				var data=[];
+				for(var i in msg.data){
+					var nameValue={};
+					nameValue.value=msg.data[i].systemId;
+					nameValue.name=msg.data[i].systemName;
+					data.push(nameValue);
+				}
+				//动态加载select
+				dynamicLoadSelect('systemId',data);
+				//初始化图表
+				myrefresh();
+				
+			},
+			error : function(msg) {
+				layer.alert(msg);
+			}
+		});
+        //定时刷新 
+		setInterval("myrefresh()",1000*30);
+	})
+	//动态加载layui
+	function  dynamicLoadSelect(id,data){
+		for(var i in data){
+			$('#'+id).append(new Option(data[i].name, data[i].value));
+		}
+		//layui.form.render('select');
+	}
+	//日期转化成yyyy-MM-dd HH:mm:ss的字符串
+    function dateToString(date){
+		//yyyy
+		var year=date.getFullYear();
+		//MM
+		var month=complemente(date.getMonth()+1);
+		//dd
+		var day=complemente(date.getDate());
+		//HH
+		var hours=complemente(date.getHours());
+		//mm
+		var minutes=complemente(date.getMinutes());
+		//ss
+		var seconds=complemente(date.getSeconds());
+		//yyyy-MM-dd HH:mm:ss
+		var dateString=year+"-"+month+"-"+day+" "+hours+":"+minutes+":"+seconds;
+		return dateString;
+	}
+	//补全数字
+	function complemente(number){
+		if(number<10){
+			number="0"+number;
+		}
+		return number;
+	}
+	//刷新图表
+	function myrefresh() {
+		var systemId='';
+		var systemIdInput=$('select[name="systemId"]').val();
+		if(systemIdInput!=''&&systemIdInput!=null){
+			systemId=systemIdInput;
+		}
+		var startTime = new Date();
+		startTime.setMinutes(startTime.getMinutes() - 5);
+		var endTime = new Date();
+		var startTimeStr = dateToString(startTime);
+		var endTimeStr =dateToString(endTime);
+		//初始化加载
+		$.ajax({
+			type : "post",
+			url : "/memory/get",
+			data : {
+				systemId : systemId,
+				startTime : startTimeStr,
+				endTime : endTimeStr
+			}, //提交到demo.php的数据
+			dataType : "json", //回调函数接收数据的数据格式
+			success : function(msg) {
+				//时间段
+				if (msg.code != 0) {
+					layer.alert(msg.message);
+					return;
+				}
+				var data = msg.data;
+				for ( var i in data) {
+					xAxisData.push(data[i].gainTime);
+					c0series1.push(data[i].jvmusedMemory);
+					c0series2.push(data[i].jvmfreeMemory);
+					c0series3.push(data[i].jvmmaxMemory);
+					c0series4.push(data[i].jvmtotalMemory);
+					c1series1.push(data[i].physicalUsedMemory);
+					c1series2.push(data[i].physicalFreeMemory);
+					c1series3.push(data[i].physicalTotalMemory);
+					c2series1.push(data[i].totalThread);
+				}
+				createChart0();
+				createChart1();
+				createChart2();
+				//清空数据
+				xAxisData = [];
+				c0series1 = [];
+				c0series2 = [];
+				c0series3 = [];
+				c0series4 = [];
+				c1series1 = [];
+				c1series2 = [];
+				c1series3 = [];
+				c2series1 = [];
+			},
+			error : function(msg) {
+				layer.alert(msg);
+			}
+		});
+
+	}
+	//图表1
+	function createChart0() {
+		// 图表1
+		// 基于准备好的dom，初始化echarts实例
+		var oneChart = echarts.init(document.getElementById('one'), "macarons");
+
+		// 指定图表的配置项和数据
+		var oneOption = {
+			title : {
+				text : 'JVM'
+			},
+			tooltip : {
+				trigger : 'axis'
+			},
+			legend : {
+				data : [ 'JVM已用内存', 'JVM空闲内存', 'JVM最大内存', 'JVM总内存' ]
+			},
+			grid : {
+				left : '3%',
+				right : '4%',
+				bottom : '3%',
+				containLabel : true
+			},
+			toolbox : {
+				feature : {
+					saveAsImage : {}
+				}
+			},
+			xAxis : {
+				type : 'category',
+				boundaryGap : false,
+				data : xAxisData
+			},
+			yAxis : {
+				type : 'value'
+			},
+			series : [ {
+				name : 'JVM已用内存',
+				type : 'line',
+				stack : '总量',
+				data : c0series1,
+				label : {
+					normal : {
+						show : true,
+						position : 'top'
+					}
+				}
+			}, {
+				name : 'JVM空闲内存',
+				type : 'line',
+				stack : '总量',
+				data : c0series2,
+				label : {
+					normal : {
+						show : true,
+						position : 'top'
+					}
+				}
+			}, {
+				name : 'JVM最大内存',
+				type : 'line',
+				stack : '总量',
+				data : c0series3,
+				label : {
+					normal : {
+						show : true,
+						position : 'top'
+					}
+				}
+			}, {
+				name : 'JVM总内存',
+				type : 'line',
+				stack : '总量',
+				data : c0series4,
+				label : {
+					normal : {
+						show : true,
+						position : 'top'
+					}
+				}
+			}
+
+			]
+		};
+		// 使用刚指定的配置项和数据显示图表。
+		oneChart.setOption(oneOption);
+	}
+	//图表2
+	function createChart1() {
+		// 图表2
+		// 基于准备好的dom，初始化echarts实例
+		var oneChart = echarts.init(document.getElementById('two'), "macarons");
+
+		// 指定图表的配置项和数据
+		var oneOption = {
+			title : {
+				text : '物理内存'
+			},
+			tooltip : {
+				trigger : 'axis'
+			},
+			legend : {
+				data : [ '物理已用内存', '物理空闲内存', '物理总内存' ]
+			},
+			grid : {
+				left : '3%',
+				right : '4%',
+				bottom : '3%',
+				containLabel : true
+			},
+			toolbox : {
+				feature : {
+					saveAsImage : {}
+				}
+			},
+			xAxis : {
+				type : 'category',
+				boundaryGap : false,
+				data : xAxisData
+			},
+			yAxis : {
+				type : 'value'
+			},
+			series : [ {
+				name : '物理已用内存',
+				type : 'line',
+				stack : '总量',
+				data : c1series1,
+				label : {
+					normal : {
+						show : true,
+						position : 'top'
+					}
+				}
+			}, {
+				name : '物理空闲内存',
+				type : 'line',
+				stack : '总量',
+				data : c1series2,
+				label : {
+					normal : {
+						show : true,
+						position : 'top'
+					}
+				}
+			}, {
+				name : '物理总内存',
+				type : 'line',
+				stack : '总量',
+				data : c1series3,
+				label : {
+					normal : {
+						show : true,
+						position : 'top'
+					}
+				}
+			} ]
+		};
+		// 使用刚指定的配置项和数据显示图表。
+		oneChart.setOption(oneOption);
+	}
+	//图表3
+	function createChart2() {
+		// 图表3
+		// 基于准备好的dom，初始化echarts实例
+		var oneChart = echarts.init(document.getElementById('three'),
+				"macarons");
+
+		// 指定图表的配置项和数据
+		var oneOption = {
+			title : {
+				text : '线程'
+			},
+			tooltip : {
+				trigger : 'axis'
+			},
+			legend : {
+				data : [ '线程数' ]
+			},
+			grid : {
+				left : '3%',
+				right : '4%',
+				bottom : '3%',
+				containLabel : true
+			},
+			toolbox : {
+				feature : {
+					saveAsImage : {}
+				}
+			},
+			xAxis : {
+				type : 'category',
+				boundaryGap : false,
+				data : xAxisData
+			},
+			yAxis : {
+				type : 'value'
+			},
+			series : [ {
+				name : '线程数',
+				type : 'line',
+				stack : '总量',
+				data : c2series1,
+				label : {
+					normal : {
+						show : true,
+						position : 'top'
+					}
+				}
+			} ]
+		};
+		// 使用刚指定的配置项和数据显示图表。
+		oneChart.setOption(oneOption);
+	}
+</script>
+</html>
